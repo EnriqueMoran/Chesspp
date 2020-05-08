@@ -10,7 +10,7 @@ from titleScreen import TitleScreen
 
 class GUI:
 
-    def __init__(self):
+    def __init__(self, networkManager):
         pygame.init()
         self.width = None
         self.height = None
@@ -20,6 +20,7 @@ class GUI:
         self.backgroundColor = None
         self.screen = None
         self.titleScreen = None    # home screen (name and room selection)
+        self.networkManager = networkManager
 
     def __repr__(self):
         return f'GUI(width: {self.width!r}, height: {self.height!r}, icon: {self.icon!r}\
@@ -45,7 +46,7 @@ class GUI:
 
         logo = pygame.image.load(self.logo)
 
-        self.titleScreen = TitleScreen(screen=self.screen, bg=self.backgroundColor, logo=logo)
+        self.titleScreen = TitleScreen(screen=self.screen, bg=self.backgroundColor, logo=logo, networkManager=self.networkManager)
 
         logging.debug(f"GUI created.")
 

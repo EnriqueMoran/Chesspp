@@ -1,5 +1,6 @@
 import logging
 import socket
+import threading
 from collections import deque
 
 class NetworkManager:
@@ -10,7 +11,22 @@ class NetworkManager:
         # self.socket = None
         self.buffer = deque()
         self.bufferLen = 5
+        self.threadPool = []
         logging.info(f"Network Manager created.")
+
+    def __del__(self):
+        for t in self.threadPool:
+            try:
+                t.join(5.0)
+            except Exception as e:
+                logging.error(f"NetworkManager: thread couldn't be renmoved. Error: {e!s}.")
+        logging.info(f"Network Manager removed.")
+
+    def __repr__(self):
+        return f"networkManager: bufferLen: {self.bufferLen}, buffer: {self.buffer}, threadPool: {self.threadPool}"
+
+    def __str__(self):
+        return f"netWorkManager: buffer len: {len(self.buffer)}, max buffer len: {self.bufferLen}"
 
     def loadConfig(self, data):
         self.ip = data["ip"]
@@ -26,12 +42,23 @@ class NetworkManager:
         # send message to check if server is available
 
     def sendMessage(self, message):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:    # IPv4, TCP
-            s.sendall(bytes(message, "utf-8"))
-            logging.debug(f"Message sent: {message}")
-            response = s.recv(1024)
-            logging.debug(f"Message received: {response}")
-            self.buffer.append(response)
+        def send():
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:    # IPv4, TCP
+                try:
+                    s.connect((self.host, self.port))
+                    s.sendall(bytes(message, "utf-8"))
+                    logging.debug(f"Message sent: {message}")
+                    response = int(s.recv(1024).decode("utf-8"))    # response code
+                    logging.debug(f"Message received: {response}")
+                    s.sendall(bytes("close", "utf-8"))    # tell server to close connection
+                    self.buffer.append(response)
+                    s.close()
+                except Exception as e:
+                    logging.error(f"Couldn't stablish connection with server. Error: {e!s}.")
+                    print(f"Couldn't stablish connection with server. Error: {e!s}.")
+        t = threading.Thread(target=send)
+        self.threadPool.append(t)
+        t.start()
 
     def receivedMessage(self, message):
         if len(self.buffer) < self.bufferLen:

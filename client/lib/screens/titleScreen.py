@@ -1,5 +1,6 @@
 import pygame
 import os, sys
+import logging
 from functools import partial
 
 sys.path.append(os.path.join(sys.path[0], 'utils'))
@@ -10,7 +11,7 @@ from pygame_textinput import TextInput
 
 class TitleScreen(Screen):
 
-    def __init__(self, logo,*args, **kwargs):
+    def __init__(self, logo, networkManager, *args, **kwargs):
         super(TitleScreen, self).__init__(*args, **kwargs)
         self.logo = logo    # image object
         self.nameInput = TextInput(max_string_length=10)
@@ -19,6 +20,7 @@ class TitleScreen(Screen):
         self.font = pygame.font.Font(pygame.font.get_default_font(), 24)
         self.nameInputLabbel = self.font.render('Username: ', True, (0, 0, 0))
         self.roomInputLabbel = self.font.render('Room: ', True, (0, 0, 0))
+        self.networkManager = networkManager
 
     def addLogo(self):
         width, height = self.screen.get_size()
@@ -51,7 +53,12 @@ class TitleScreen(Screen):
         self.screen.blit(self.roomInputLabbel, (x - 100, y))
 
     def enterRoom(self, playerName, roomId):
+        # check if can reach server
         print(f"Player {playerName} entering room {roomId}...")
+        message = f"0::{roomId}${playerName}-127.0.0.1"    # add player to room TODO: get real IP
+        self.networkManager.sendMessage(message)
+        logging.debug(f"Player {playerName} entering room {roomId}...")
+        logging.debug(f"Mesage sent: {message}")
 
     def addJoinRoomButton(self, events):
         width, height = self.screen.get_size()

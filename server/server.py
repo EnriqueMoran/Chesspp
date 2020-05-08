@@ -65,12 +65,18 @@ def run():
 
 def test():
     while True:
-        message = networkManager.getMessage()
-        if message:
-            roomManager.receivedMessage(message)
-            time.sleep(0.05)
-        else:
-           pass
+        try:
+            data = networkManager.getMessage()
+            if data:
+                message, socket = data
+                response = roomManager.receivedMessage(message)
+                time.sleep(0.05)    # simulates processing time
+                networkManager.processResponse(response, socket)
+            else:
+               pass
+        except Exception as e:
+            logging.critical(f"Server closing. Error: {e!s}")
+            break
 
 
 if __name__ == "__main__":

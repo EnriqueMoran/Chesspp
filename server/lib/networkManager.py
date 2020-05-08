@@ -15,6 +15,7 @@ class NetworkManager:
 
     def __del__(self):
         self.receiverThread.join()
+        logging.info(f"Network Manager removed.")
 
     def __repr__(self):
         return f"networkManager: bufferLen: {self.bufferLen}, buffer: {self.buffer}"
@@ -29,7 +30,7 @@ class NetworkManager:
         self.receiverThread = threading.Thread(target=self.receiveMessage)
         self.receiverThread.start()
 
-    def receivedMessage(self, message):
+    def receivedMessage(self, message):    # message = (msg, socket)
         '''
         Message format: TypeID::body
         if TypeID == 0 -> create or join room:
@@ -39,11 +40,10 @@ class NetworkManager:
         '''
         if len(self.buffer) < self.bufferLen:
             self.buffer.append(message)
-            logging.debug(f"Message received:{message}, networkManager buffer len: {len(self.buffer)}.")
+            logging.debug(f"Message received:{message[0]}, networkManager buffer len: {len(self.buffer)}.")
         else:
             # send message to client and ask him to retry after x time
-            logging.warning(f"Message received but not processed:{message}, buffer has already reached max elements ({len(self.buffer)}).")
-            pass
+            logging.warning(f"Message received but not processed:{message[0]}, buffer has already reached max elements ({len(self.buffer)}).")
 
     def getMessage(self):    # get oldest received message
         if len(self.buffer) > 0:
@@ -51,18 +51,45 @@ class NetworkManager:
         else:
             return None
 
-    def receiveMessage(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:    # IPv4, TCP
-            s.bind((self.ip, self.port))
-            s.listen(2)
-            conn, addr = s.accept()
+    def receiveMessage(self, s=None):
+        def receive(connData):
+            conn, addr = connData
             with conn:
                 print(f"Connected by {addr}")
                 while True:
-                    msg = conn.recv(1024).decode("utf-8")
-                    if not msg:
-                        break
-                    print("received msg: ", msg)
-                    self.receivedMessage(msg)
-                conn.close()
-                print("connection closed")
+                    try:
+                        msg = conn.recv(1024).decode("utf-8")
+                        print("received msg: ", msg)
+                        if not msg:
+                            #break  # if msg = close or similar
+                            continue
+                        if msg == "close":
+                            conn.close()
+                            # s.close()
+                            logging.debug(f"Connection with {addr} closed.")
+                            print(f"Closing connection with {addr}" )
+                            break
+                        self.receivedMessage((msg, conn))
+                    except Exception as e:
+                        print(f"Socket error, closing. Error: {e!s}")
+                        conn.close()
+                print("Socket closed")
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:    # IPv4, TCP
+            s.bind((self.ip, self.port))
+            s.listen(5)
+            while True: 
+                try:
+                    t = threading.Thread(target=receive, args=(s.accept(), ))
+                    t.start()
+                except Exception as e:
+                    print(e)
+            s.close()
+            
+    def processResponse(self, response, socket):
+        # check if socket
+        try:
+            socket.sendall(bytes(str(response), "utf-8"))
+            logging.debug(f"Message sent: {response}")
+        except Exception as e:
+            logging.warning(f"Message {response} couldn't be sent. Error: {e!s}.")

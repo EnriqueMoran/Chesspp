@@ -35,9 +35,9 @@ def run():
 
     networkManager = NetworkManager()
     networkManager.loadConfig(fileReader.networkManager_data)
-    print("Network Manager started.")
+    networkManager.connect()
 
-    gui = GUI()
+    gui = GUI(networkManager)
     gui.loadConfig(fileReader.screen_data)
     clock = pygame.time.Clock()
 
@@ -47,12 +47,25 @@ def run():
         for event in events:
             if event.type == pygame.QUIT:
                 # TODO: call closing methods/classes
+                logging.info("Removing instances...")
+                try:
+                    del networkManager
+                except Exception as e:
+                    logging.error(f"Couldnt delete instance. Error: {e!s}.")
                 running = False
+                logging.info("All instances were removed.")
+                break
+            message = networkManager.getMessage()
+            if message:
+                if message == 1:    # send it to gameManager/roomManager
+                    print(f"Message from server: Room joined!")
 
         gui.showScreen(events)
         
         pygame.display.update()
         clock.tick(30)
+    logging.info("Client closed.")
+    return 0
 
 
 

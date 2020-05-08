@@ -50,15 +50,19 @@ class RoomManager:
                     player = Player(ip, nick, uuid.uuid4())    # create player
                     self.rooms[roomId].addPlayer(player)
                     # send message to client: room created, player id: ...
+                    return 1    # Room created message
                 else:
                     # send message to client: room already has 2 players
                     logging.debug(f"Room {roomId} player {nick} tried to enter, but room was full!")
-                    pass
+                    return 2    # Room full message
             else:
                 # send message to client: max number of rooms reached
-                pass
+                return 3    # Max number of rooms reached message
         elif typeID == 1:
             self.rooms[roomId].receivedMessage(data)
+            # return x
+        else:
+            return -1    # error
 
     def checkFinished(self):
         while True:
